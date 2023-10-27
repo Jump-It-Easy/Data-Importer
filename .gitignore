@@ -160,13 +160,13 @@ cython_debug/
 .idea/
 
 # Images
-images/*.png
-images/*.jpg
-images/*.jpeg
-images/*.gif
-images/*.svg
-images/*.webp
-images/*.bmp
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.webp
+*.bmp
 
 # XLSX files
 *.xlsx
