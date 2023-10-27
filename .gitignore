@@ -168,5 +168,9 @@ images/*.svg
 images/*.webp
 images/*.bmp
 
+# XLSX files
+*.xlsx
+~$*.xlsx
+
 # VSCode
 .vscode/

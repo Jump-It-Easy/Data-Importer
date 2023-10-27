@@ -1,8 +1,9 @@
 import cv2
+import numpy as np
 import pandas as pd
 
-showResult = input("Show result ? (y/n): ").lower() == "y"
-saveInExcel = input("Save in excel ? (y/n): ").lower() == "y"
+showResult = input("Show result ? (Y/n): ").lower() != "n"
+saveInExcel = input("Save in excel ? (Y/n): ").lower() != "n"
 imageName = "images/" + input("Type the image name (with his extension): ")
 
 image = cv2.imread(imageName)
@@ -19,26 +20,52 @@ contours, hierarchy = cv2.findContours(
     edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
 obstacles = []
+contoursToSkip = []
+finalContours = []
 
 # Review & filter contours
-finalContours = []
 for contour in contours:
+    for ctr in contoursToSkip:
+        if ctr is contour:
+            continue
+
     (x, y, w, h) = cv2.boundingRect(contour)
 
-    if (w > 10 or h > 10):
-        # Get center of the contours
-        center = (x + w // 2, y + h // 2)
+    if w < 10 or h < 10:
+        continue
 
-        finalContours.append(contour)
+    result = contour.copy()
 
-        obstacles.append({
-            "originX": x,
-            "originY": y,
-            "centerX": center[0],
-            "centerY": center[1],
-            "width": w,
-            "height": h
-        })
+    # Merge contours that are too close
+    for ctr in contours:
+        # Self check
+        if ctr is contour:
+            continue
+
+        (x2, y2, w2, h2) = cv2.boundingRect(ctr)
+
+        # Check if the contours are too close
+        if abs(x2 - x) < 10 and abs(y2 - y) < 10:
+            result = np.concatenate((result, ctr))
+            contoursToSkip.append(ctr)
+
+    finalContours.append(result)
+
+# Get obstacles data
+for contour in finalContours:
+    (x, y, w, h) = cv2.boundingRect(contour)
+
+    # Get center of the contours
+    center = (x + w // 2, y + h // 2)
+
+    obstacles.append({
+        "originX": x,
+        "originY": y,
+        "centerX": center[0],
+        "centerY": center[1],
+        "width": w,
+        "height": h
+    })
 
 # Save obstacles in excel
 if saveInExcel:
@@ -50,9 +77,10 @@ if saveInExcel:
             f"A file named {imageName.rsplit('.', 1)[0]}.xlsx exist and is already opened.")
         exit()
 
+print(f"Obstacles found: {len(finalContours)}")
+
 # Show result image in a window
 if showResult:
     cv2.drawContours(image, finalContours, -1, (0, 255, 0), 2)
     cv2.imshow("Image", image)
     cv2.waitKey(0)
-print(f"Obstacles found: {len(finalContours)}")
