@@ -2,6 +2,8 @@ import os
 import cv2
 import numpy as np
 import pandas as pd
+import dataFormatter
+import backgroundRemover
 
 
 def GetOutlines(image):
@@ -26,50 +28,6 @@ def GetOutlines(image):
     return result
 
 
-def GetRotation(outline):
-    # Get the minimum area rectangle
-    rect = cv2.minAreaRect(outline)
-
-    # Get the rotation angle
-    angle = rect[-1]
-
-    # From https://www.pyimagesearch.com/2017/02/20/text-skew-correction-opencv-python/
-    # The `cv2.minAreaRect` function returns values in the range [-90, 0);
-    # As the rectangle rotates clockwise the returned angle trends to 0 --
-    # In this special case we need to add 90 degrees to the angle
-    if angle < -45:
-        angle = -(90 + angle)
-    # Otherwise, just take the inverse of the angle to make it positive
-    else:
-        angle = -angle
-
-    return angle + 90
-
-
-def GetObstaclesData(outlines, terrainWidth, terrainHeight):
-    obstacles = []
-    for outline in outlines:
-        (x, y, w, h) = cv2.boundingRect(outline)
-
-        # Convert to meters
-        x = (x / image.shape[1]) * terrainWidth
-        y = (y / image.shape[0]) * terrainHeight
-        w = (w / image.shape[1]) * terrainWidth
-        h = (h / image.shape[0]) * terrainHeight
-
-        obstacles.append({
-            "originX": x,
-            "originY": y,
-            "centerX": x + w // 2,
-            "centerY": y + h // 2,
-            "width": w,
-            "length": h,
-            "rotation": GetRotation(outline)
-        })
-
-    return obstacles
-
-
 def saveInXlsx(obstacles, imageName):
     xlsxName = imageName.rsplit('/', 1)[0]  # Remove path
     xlsxName = imageName.rsplit('.', 1)[0] + ".xlsx"  # Change file extension
@@ -84,10 +42,13 @@ def saveInXlsx(obstacles, imageName):
 
 
 def renderResult(image, outlines):
-    for outline in outlines:
-        box = cv2.minAreaRect(outline)
-        box = np.intp(cv2.boxPoints(box))
-        cv2.drawContours(image, [box], -1, (0, 255, 0), 2)
+    image = backgroundRemover.remove(image)
+
+    # for outline in outlines:
+    #     box = cv2.minAreaRect(outline)
+    #     box = np.intp(cv2.boxPoints(box))
+    #     cv2.drawContours(image, [box], -1, (0, 0, 255), 2)
+
     cv2.imshow("Image", image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -105,11 +66,14 @@ if __name__ == "__main__":
 
     # Get outlines
     outlines = GetOutlines(image)
-    print(f"Obstacles found: {len(outlines)}")
+
+    # Get obstacles data
+    obstacles = dataFormatter.GetObstaclesData(
+        outlines, image, terrainWidth, terrainHeight)
+    print(f"Obstacles found: {len(obstacles)}")
 
     # Save in a excel file | Show result
     if saveInExcel:
-        saveInXlsx(GetObstaclesData(
-            outlines, terrainWidth, terrainHeight), imageName)
+        saveInXlsx(obstacles, imageName)
     if showResult:
         renderResult(image, outlines)
