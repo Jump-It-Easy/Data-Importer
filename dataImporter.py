@@ -6,7 +6,7 @@ import dataFormatter
 import imageFormatter
 
 
-def GetOutlines(image):
+def get_outlines(image):
     # Apply threshold
     threshold = cv2.threshold(image, 220, 255, cv2.THRESH_BINARY_INV)[1]
 
@@ -25,20 +25,20 @@ def GetOutlines(image):
     return result
 
 
-def saveInXlsx(obstacles, imageName):
-    xlsxName = imageName.rsplit('/', 1)[0]  # Remove path
-    xlsxName = imageName.rsplit('.', 1)[0] + ".xlsx"  # Change file extension
+def save_in_xlsx(obstacles, image_name):
+    xlsx_name = image_name.rsplit('/', 1)[0]  # Remove path
+    xlsx_name = image_name.rsplit('.', 1)[0] + ".xlsx"  # Change file extension
 
     try:
         pd.DataFrame(obstacles[::-1]).to_excel(
-            f"{os.getcwd()}/{xlsxName}", header=True, index=False)
+            f"{os.getcwd()}/{xlsx_name}", header=True, index=False)
     except:
         print(
-            f"A file named {xlsxName}.xlsx exist and is already opened.")
+            f"A file named {xlsx_name}.xlsx exist and is already opened.")
         exit()
 
 
-def renderResult(image, outlines):
+def render_result(image, outlines):
 
     for outline in outlines:
         box = cv2.minAreaRect(outline)
@@ -51,29 +51,29 @@ def renderResult(image, outlines):
 
 
 if __name__ == "__main__":
-    showResult = input("Show result ? (Y/n): ").lower() != "n"
-    saveInExcel = input("Save in excel ? (Y/n): ").lower() != "n"
-    imageName = input("Type the image name (with his extension): ")
-    terrainWidth = int(input("Type the terrain width (meters): "))
-    terrainHeight = int(input("Type the terrain height (meters): "))
+    show_result = input("Show result ? (Y/n): ").lower() != "n"
+    save_in_excel = input("Save in excel ? (Y/n): ").lower() != "n"
+    image_name = input("Type the image name (with his extension): ")
+    terrain_width = int(input("Type the terrain width (meters): "))
+    terrain_height = int(input("Type the terrain height (meters): "))
 
     # Load image
-    image = cv2.imread(imageName)
+    image = cv2.imread(image_name)
 
     # Format image
-    image = imageFormatter.removeGrid(image)
-    image = imageFormatter.cropImage(image)
+    image = imageFormatter.remove_grid(image)
+    image = imageFormatter.crop_image(image)
 
     # Get outlines
-    outlines = GetOutlines(image)
+    outlines = get_outlines(image)
 
     # Get obstacles data
-    obstacles = dataFormatter.GetObstaclesData(
-        outlines, image, terrainWidth, terrainHeight)
+    obstacles = dataFormatter.get_obstacles_data(
+        outlines, image, terrain_width, terrain_height)
     print(f"Obstacles found: {len(obstacles)}")
 
     # Save in a excel file | Show result
-    if saveInExcel:
-        saveInXlsx(obstacles, imageName)
-    if showResult:
-        renderResult(image, outlines)
+    if save_in_excel:
+        save_in_xlsx(obstacles, image_name)
+    if show_result:
+        render_result(image, outlines)

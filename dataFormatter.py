@@ -3,11 +3,11 @@ import numpy as np
 import math
 
 
-def GetDistance(point1, point2):
+def get_distance(point1, point2):
     return math.sqrt((point2[0] - point1[0])**2 + (point2[1] - point1[1])**2)
 
 
-def GetRotation(outline):
+def get_rotation(outline):
     # Get the minimum area rectangle
     rect = cv2.minAreaRect(outline)
 
@@ -27,7 +27,7 @@ def GetRotation(outline):
     return angle + 90
 
 
-def GetCoords(box):
+def get_coords(box):
     x = math.inf
     y = math.inf
 
@@ -40,24 +40,24 @@ def GetCoords(box):
     return (x, y)
 
 
-def GetSize(box):
-    if GetDistance(box[0], box[1]) > GetDistance(box[1], box[2]):
-        width = GetDistance(box[1], box[2])
-        length = GetDistance(box[0], box[1])
+def get_size(box):
+    if get_distance(box[0], box[1]) > get_distance(box[1], box[2]):
+        width = get_distance(box[1], box[2])
+        length = get_distance(box[0], box[1])
     else:
-        width = GetDistance(box[0], box[1])
-        length = GetDistance(box[1], box[2])
+        width = get_distance(box[0], box[1])
+        length = get_distance(box[1], box[2])
 
     return (width, length)
 
 
 # Ne peut pas marcher x)
-def mergeBoxes(box1, box2):
-    x1, y1 = GetCoords(box1)
-    x2, y2 = GetCoords(box2)
+def merge_boxes(box1, box2):
+    x1, y1 = get_coords(box1)
+    x2, y2 = get_coords(box2)
 
-    w1, l1 = GetSize(box1)
-    w2, l2 = GetSize(box2)
+    w1, l1 = get_size(box1)
+    w2, l2 = get_size(box2)
 
     x = min(x1, x2)
     y = min(y1, y2)
@@ -68,26 +68,28 @@ def mergeBoxes(box1, box2):
     return (x, y, w, l)
 
 
-def GetObstaclesData(outlines, image, terrainWidth, terrainHeight):
+def get_obstacles_data(outlines, image, terrain_width, terrain_height):
     obstacles = []
 
     # Set base data for each obstacle
     index = len(outlines) - 1
-    skipNext = False  # In case we have merge him with the tested obstacle
+    skip_next = False # In case we have merge him with the tested obstacle
     for outline in outlines:
         box = cv2.minAreaRect(outline)
         box = np.intp(cv2.boxPoints(box))
 
         # Get the coordinates of the obstacle
-        x, y = GetCoords(box)
-        w, l = GetSize(box)
+        x, y = get_coords(box)
+        w, l = get_size(box)
 
         # TOO LARGE
-        if w > 10 or l > 10:
-            continue
+        # if w > 7 and l > 7:
+        #     print("HERE")
+        #     continue
 
         # Merge the obstacle with the next one if they are close
-        if not skipNext:
+        if not skip_next:
+            print("PASSED")
             # for nextOutline in outlines[index + 1:]:
             #     nextBox = cv2.minAreaRect(nextOutline)
             #     nextBox = np.intp(cv2.boxPoints(nextBox))
@@ -103,10 +105,11 @@ def GetObstaclesData(outlines, image, terrainWidth, terrainHeight):
             #         break
 
             # Convert to meters
-            x = (x / image.shape[1]) * terrainWidth
-            y = (y / image.shape[0]) * terrainHeight
-            w = (w / image.shape[1]) * terrainWidth
-            l = (l / image.shape[0]) * terrainHeight
+            x = (x / image.shape[1]) * terrain_width
+            print("x == ", x)
+            y = (y / image.shape[0]) * terrain_height
+            w = (w / image.shape[1]) * terrain_width
+            l = (l / image.shape[0]) * terrain_height
 
             obstacles.append({
                 "id": index,
@@ -116,12 +119,13 @@ def GetObstaclesData(outlines, image, terrainWidth, terrainHeight):
                 "centerY": y + l // 2,
                 "width": w,
                 "length": l,
-                "rotation": GetRotation(outline)
+                "rotation": get_rotation(outline)
             })
             index -= 1
 
     # Determine the smallest obstacle width
-    minWidth = min(obstacles, key=lambda x: x["width"])["width"]
+    print(obstacles)
+    min_width = min(obstacles, key=lambda x: x["width"])["width"]
 
     for obstacle in obstacles:
         # Natural obstacles (rock, tree, etc.)
@@ -129,11 +133,11 @@ def GetObstaclesData(outlines, image, terrainWidth, terrainHeight):
             obstacle["type"] = "natural"
 
         # Vertical obstacles
-        if (obstacle["width"] == minWidth and obstacle["rotation"] == 0) or (obstacle["length"] == minWidth and abs(obstacle["rotation"]) == 90):
+        if (obstacle["width"] == min_width and obstacle["rotation"] == 0) or (obstacle["length"] == min_width and abs(obstacle["rotation"]) == 90):
             obstacle["type"] = "vertical"
 
         # Oxers
-        elif (obstacle["width"] <= minWidth * 1.5 and obstacle["width"] > minWidth and obstacle["rotation"] == 0) or (obstacle["length"] <= minWidth * 2 and obstacle["length"] > minWidth and abs(obstacle["rotation"]) == 90):
+        elif (obstacle["width"] <= min_width * 1.5 and obstacle["width"] > min_width and obstacle["rotation"] == 0) or (obstacle["length"] <= min_width * 2 and obstacle["length"] > min_width and abs(obstacle["rotation"]) == 90):
             obstacle["type"] = "oxer"
 
     return obstacles
