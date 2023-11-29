@@ -82,6 +82,10 @@ def GetObstaclesData(outlines, image, terrainWidth, terrainHeight):
         x, y = GetCoords(box)
         w, l = GetSize(box)
 
+        # TOO LARGE
+        if w > 10 or l > 10:
+            continue
+
         # Merge the obstacle with the next one if they are close
         if not skipNext:
             # for nextOutline in outlines[index + 1:]:

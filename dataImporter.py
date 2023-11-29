@@ -3,15 +3,12 @@ import cv2
 import numpy as np
 import pandas as pd
 import dataFormatter
-import backgroundRemover
+import imageFormatter
 
 
 def GetOutlines(image):
-    # Convert to grayscale
-    grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
     # Apply threshold
-    threshold = cv2.threshold(grayscale, 220, 255, cv2.THRESH_BINARY_INV)[1]
+    threshold = cv2.threshold(image, 220, 255, cv2.THRESH_BINARY_INV)[1]
 
     # Find outlines
     outlines, _ = cv2.findContours(
@@ -42,12 +39,11 @@ def saveInXlsx(obstacles, imageName):
 
 
 def renderResult(image, outlines):
-    image = backgroundRemover.remove(image)
 
-    # for outline in outlines:
-    #     box = cv2.minAreaRect(outline)
-    #     box = np.intp(cv2.boxPoints(box))
-    #     cv2.drawContours(image, [box], -1, (0, 0, 255), 2)
+    for outline in outlines:
+        box = cv2.minAreaRect(outline)
+        box = np.intp(cv2.boxPoints(box))
+        cv2.drawContours(image, [box], -1, (0, 0, 255), 2)
 
     cv2.imshow("Image", image)
     cv2.waitKey(0)
@@ -63,6 +59,10 @@ if __name__ == "__main__":
 
     # Load image
     image = cv2.imread(imageName)
+
+    # Format image
+    image = imageFormatter.removeGrid(image)
+    image = imageFormatter.cropImage(image)
 
     # Get outlines
     outlines = GetOutlines(image)
