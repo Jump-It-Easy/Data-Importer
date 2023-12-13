@@ -14,4 +14,4 @@ def crop_image(image):
     box = dataImporter.get_outlines(image)[0]
     box = cv2.minAreaRect(box)
     box_size = np.intp(cv2.boxPoints(box))
-    return image[box_size[0][1]+10:box_size[2][1]-10, box_size[0][0]+10:box_size[2][0]-10]
+    return image[box_size[0][1]+8:box_size[2][1]-8, box_size[0][0]+8:box_size[2][0]-8]

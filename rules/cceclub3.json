@@ -1,0 +1,16 @@
+{
+	"distance": 300,
+	"speed": 250,
+	"obstacles": {
+		"min": 8,
+		"max": 10
+	},
+	"efforts": {
+		"min": 8,
+		"max": 10
+	},
+	"combinaisons": false,
+	"height": 60,
+	"width": 60,
+	"river": false
+}

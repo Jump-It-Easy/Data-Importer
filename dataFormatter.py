@@ -1,6 +1,9 @@
+import os
+import json
 import cv2
 import numpy as np
 import math
+from uncertainties import ufloat
 
 
 def get_distance(point1, point2):
@@ -24,7 +27,12 @@ def get_rotation(outline):
     else:
         angle = -angle
 
-    return angle + 90
+    final_angle = angle + 90
+
+    if final_angle < 5:
+        final_angle = 0
+
+    return final_angle
 
 
 def get_coords(box):
@@ -68,12 +76,11 @@ def merge_boxes(box1, box2):
     return (x, y, w, l)
 
 
-def get_obstacles_data(outlines, image, terrain_width, terrain_height):
+def get_obstacles_data(outlines, image, terrain_width, terrain_height, rules_name):
     obstacles = []
 
     # Set base data for each obstacle
     index = len(outlines) - 1
-    skip_next = False # In case we have merge him with the tested obstacle
     for outline in outlines:
         box = cv2.minAreaRect(outline)
         box = np.intp(cv2.boxPoints(box))
@@ -82,56 +89,36 @@ def get_obstacles_data(outlines, image, terrain_width, terrain_height):
         x, y = get_coords(box)
         w, l = get_size(box)
 
-        # TOO LARGE
-        # if w > 7 and l > 7:
-        #     print("HERE")
-        #     continue
+        # Detection bugs
+        if w < 0.3 or l < 0.5:
+            continue
 
-        # Merge the obstacle with the next one if they are close
-        if not skip_next:
-            print("PASSED")
-            # for nextOutline in outlines[index + 1:]:
-            #     nextBox = cv2.minAreaRect(nextOutline)
-            #     nextBox = np.intp(cv2.boxPoints(nextBox))
+        # Convert to meters
+        x = round((x / image.shape[1]) * terrain_width, 2)
+        y = round(((y / image.shape[0]) * terrain_height), 2)
+        w = round(((w / image.shape[1]) * terrain_width), 2)
+        l = round(((l / image.shape[0]) * terrain_height), 2)
 
-            #     nextX, nextY = GetCoords(nextBox)
-            #     nextW, nextL = GetSize(nextBox)
+        rulesFile = open(f"{os.getcwd()}/rules/{rules_name}.json")
+        rules: dict = json.loads(rulesFile.read())
 
-            #     if GetDistance((x, y), (nextX, nextY)) < 10:
-            #         box = mergeBoxes(box, nextBox)
-            #         x, y = GetCoords(box)
-            #         w, l = GetSize(box)
-            #         skipNext = True
-            #         break
-
-            # Convert to meters
-            x = (x / image.shape[1]) * terrain_width
-            print("x == ", x)
-            y = (y / image.shape[0]) * terrain_height
-            w = (w / image.shape[1]) * terrain_width
-            l = (l / image.shape[0]) * terrain_height
-
-            obstacles.append({
-                "id": index,
-                "originX": x,
-                "originY": y,
-                "centerX": x + w // 2,
-                "centerY": y + l // 2,
-                "width": w,
-                "length": l,
-                "rotation": get_rotation(outline)
-            })
-            index -= 1
+        obstacles.append({
+            "id": index,
+            "originX": x,
+            "originY": y,
+            "centerX": x + w // 2,
+            "centerY": y + l // 2,
+            "width": w,
+            "height": rules.get('height'),
+            "length": l,
+            "rotation": round(get_rotation(outline), 2)
+        })
+        index -= 1
 
     # Determine the smallest obstacle width
-    print(obstacles)
     min_width = min(obstacles, key=lambda x: x["width"])["width"]
 
     for obstacle in obstacles:
-        # Natural obstacles (rock, tree, etc.)
-        if obstacle["width"] < 3 and obstacle["length"] < 3:
-            obstacle["type"] = "natural"
-
         # Vertical obstacles
         if (obstacle["width"] == min_width and obstacle["rotation"] == 0) or (obstacle["length"] == min_width and abs(obstacle["rotation"]) == 90):
             obstacle["type"] = "vertical"
@@ -139,5 +126,8 @@ def get_obstacles_data(outlines, image, terrain_width, terrain_height):
         # Oxers
         elif (obstacle["width"] <= min_width * 1.5 and obstacle["width"] > min_width and obstacle["rotation"] == 0) or (obstacle["length"] <= min_width * 2 and obstacle["length"] > min_width and abs(obstacle["rotation"]) == 90):
             obstacle["type"] = "oxer"
+
+        else:
+            obstacle["type"] = "other"
 
     return obstacles
